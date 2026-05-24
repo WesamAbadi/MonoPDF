@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Reader</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #141414;
+  --bar:     #0b0b0b;
+  --border:  #252525;
+  --accent:  #f0c040;
+  --fg:      #c8c8c8;
+  --dim:     #484848;
+  --mono:    ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace;
+  --bar-h:   46px;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--fg); font-family: var(--mono); overflow: hidden; }
+
+/* ── Toolbar ─────────────────────────────── */
+#bar {
+  position: fixed; inset: 0 0 auto 0; height: var(--bar-h);
+  background: var(--bar); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px; padding: 0 14px;
+  z-index: 50; user-select: none;
+}
+#open-btn {
+  all: unset; cursor: pointer; font: 10px/1 var(--mono);
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 6px 11px; border: 1px solid var(--border); border-radius: 3px;
+  color: var(--fg); transition: border-color .15s, color .15s; white-space: nowrap; flex-shrink: 0;
+}
+#open-btn:hover { border-color: var(--accent); color: var(--accent); }
+#fname { font-size: 10px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 0; }
+.spacer { flex: 1; }
+#nav { display: flex; align-items: center; gap: 4px; }
+#nav button {
+  all: unset; cursor: pointer; width: 30px; height: 30px;
+  display: grid; place-items: center; border-radius: 4px; font-size: 14px;
+  color: var(--fg); transition: background .12s, color .12s;
+}
+#nav button:hover:not(:disabled) { background: #1c1c1c; color: #fff; }
+#nav button:disabled { opacity: .25; cursor: default; }
+#pg-cur {
+  all: unset; width: 38px; text-align: center; font: 11px/1 var(--mono);
+  color: var(--accent); border-bottom: 1px solid var(--border); padding: 3px 4px; transition: border-color .15s;
+}
+#pg-cur:focus { outline: none; border-color: var(--accent); }
+#pg-tot { font-size: 11px; color: var(--dim); white-space: nowrap; }
+#zoom {
+  all: unset; font: 10px/1 var(--mono); color: var(--dim); cursor: pointer;
+  padding: 5px 8px; border: 1px solid transparent; border-radius: 3px;
+  transition: border-color .15s; margin-left: 8px; flex-shrink: 0;
+}
+#zoom:hover { border-color: var(--border); }
+#zoom option { background: #1a1a1a; }
+
+/* ── Progress ───────────────────────────── */
+#pbar { position: fixed; top: var(--bar-h); left: 0; height: 2px; width: 0%; background: var(--accent); z-index: 49; transition: width .25s; }
+
+/* ── Viewer (continuous scroll) ──────────── */
+#viewer {
+  position: fixed; inset: var(--bar-h) 0 0 0;
+  overflow-y: auto; overflow-x: auto;
+  display: none; flex-direction: column; align-items: center;
+  padding: 24px 20px 80px; gap: 16px;
+}
+
+/* ── Page wrap: canvas + text layer ─────── */
+.pw {
+  position: relative;
+  line-height: 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,.55);
+  flex-shrink: 0;
+  background: #fff; /* placeholder bg before canvas renders */
+}
+.pw canvas { display: block; }
+
+/* ── Text layer — the critical part ─────── */
+/*
+  pdf.js 3.x text layer requirements:
+  1. position: absolute; inset: 0
+  2. --scale-factor set via JS to viewport.scale BEFORE renderTextLayer()
+  3. spans use position:absolute with transform for precise placement
+*/
+.tl {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+  /* required by pdf.js 3.x for text coordinate system */
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+}
+.tl span, .tl br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+/* pdf.js 3.x uses --scale-x per span for horizontal scaling */
+.tl span { transform: scaleX(var(--scale-x, 1)); }
+.tl span::selection { background: rgba(240,192,64,.38); }
+.tl span::-moz-selection { background: rgba(240,192,64,.38); }
+/* end-of-content sentinel */
+.tl .endOfContent { display: block; position: absolute; inset: 100% 0 0; min-height: 100%; cursor: default; z-index: -1; }
+
+/* ── Drop zone ───────────────────────────── */
+#drop { position: fixed; inset: var(--bar-h) 0 0 0; display: flex; align-items: center; justify-content: center; }
+#drop-box {
+  border: 1px dashed var(--border); border-radius: 6px;
+  padding: 52px 72px; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+#drop-box:hover, #drop.over #drop-box { border-color: var(--accent); background: rgba(240,192,64,.035); }
+#drop-icon { font-size: 28px; margin-bottom: 14px; opacity: .35; }
+#drop-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
+#drop-sub { font-size: 10px; color: var(--dim); line-height: 1.7; }
+
+/* ── Toast ───────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: #1e1e1e; border: 1px solid var(--border); border-radius: 4px;
+  padding: 7px 14px; font-size: 10px; letter-spacing: .1em; color: var(--accent);
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Hint ────────────────────────────────── */
+#hint { position: fixed; bottom: 10px; right: 14px; font-size: 9px; letter-spacing: .08em; color: #2e2e2e; pointer-events: none; }
+
+#file-input { display: none; }
+</style>
+</head>
+<body>
+
+<input type="file" id="file-input" accept=".pdf">
+
+<div id="bar">
+  <button id="open-btn" onclick="fileInput.click()">Open PDF</button>
+  <span id="fname"></span>
+  <div class="spacer"></div>
+  <div id="nav">
+    <button id="btn-prev" disabled title="Prev page (↑ / k)">&#8592;</button>
+    <input id="pg-cur" type="number" min="1" value="1">
+    <span id="pg-tot">/ —</span>
+    <button id="btn-next" disabled title="Next page (↓ / j)">&#8594;</button>
+  </div>
+  <select id="zoom">
+    <option value="0.75">75%</option>
+    <option value="1.0">100%</option>
+    <option value="1.25">125%</option>
+    <option value="1.5" selected>150%</option>
+    <option value="2.0">200%</option>
+    <option value="fit">Fit width</option>
+  </select>
+</div>
+<div id="pbar"></div>
+
+<div id="drop">
+  <div id="drop-box">
+    <div id="drop-icon">⬡</div>
+    <div id="drop-label">Drop a PDF here</div>
+    <div id="drop-sub">or click <strong style="color:var(--fg)">Open PDF</strong> above<br>position saves automatically per file</div>
+  </div>
+</div>
+
+<div id="viewer"></div>
+<div id="toast"></div>
+<div id="hint">scroll · j k navigate · ← → page</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+'use strict';
+
+const STORE_KEY  = 'pdfr:v2:positions';
+const WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL;
+
+// ── State ──────────────────────────────────────────────
+let pdf = null, curPage = 1, numPages = 0, curName = '';
+let curScale = 1.5;
+const rendered  = new Set();  // page numbers fully rendered
+const rendering = new Set();  // page numbers currently rendering
+let lazyObserver = null;
+
+// ── Elements ───────────────────────────────────────────
+const fileInput = document.getElementById('file-input');
+const fname     = document.getElementById('fname');
+const btnPrev   = document.getElementById('btn-prev');
+const btnNext   = document.getElementById('btn-next');
+const pgCur     = document.getElementById('pg-cur');
+const pgTot     = document.getElementById('pg-tot');
+const zoomSel   = document.getElementById('zoom');
+const viewer    = document.getElementById('viewer');
+const drop      = document.getElementById('drop');
+const pbar      = document.getElementById('pbar');
+const toast     = document.getElementById('toast');
+
+// ── Storage ────────────────────────────────────────────
+const getPos = ()        => { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; } };
+const savePos = (n, p)   => { try { const d = getPos(); d[n] = p; localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch {} };
+const loadPos = n        => getPos()[n] || 1;
+
+// ── Toast ──────────────────────────────────────────────
+let toastT;
+function showToast(msg) {
+  clearTimeout(toastT);
+  toast.textContent = msg;
+  toast.classList.add('show');
+  toastT = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ── Effective scale ────────────────────────────────────
+function effectiveScale(page) {
+  if (curScale === 'fit') {
+    const raw = page.getViewport({ scale: 1 });
+    return Math.max(0.2, (viewer.clientWidth - 48) / raw.width);
+  }
+  return curScale;
+}
+
+// ── Render one page element ────────────────────────────
+async function renderPageEl(pw) {
+  const n = +pw.dataset.page;
+  if (rendered.has(n) || rendering.has(n)) return;
+  rendering.add(n);
+
+  try {
+    const page = await pdf.getPage(n);
+    const s    = effectiveScale(page);
+    const vp   = page.getViewport({ scale: s });
+
+    const canvas = pw.querySelector('canvas');
+    const tl     = pw.querySelector('.tl');
+
+    // Size canvas
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+
+    // Size wrapper
+    pw.style.width  = vp.width  + 'px';
+    pw.style.height = vp.height + 'px';
+
+    // ── KEY FIX: set --scale-factor BEFORE renderTextLayer ──
+    // pdf.js 3.x reads this variable during text layer rendering.
+    // Without it, text spans are placed at wrong coordinates.
+    tl.style.setProperty('--scale-factor', s);
+    tl.style.width  = vp.width  + 'px';
+    tl.style.height = vp.height + 'px';
+
+    // Render canvas
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+    // Render text layer — DOM-based (not canvas), so extensions
+    // injecting on text selection work exactly like a native PDF viewer
+    tl.innerHTML = '';
+    const tc = await page.getTextContent();
+
+    try {
+      const task = pdfjsLib.renderTextLayer({
+        textContentSource: tc,  // pdf.js 3.x API
+        container: tl,
+        viewport: vp,
+        textDivs: [],
+      });
+      // handle both promise-returning and direct-promise APIs
+      await (task?.promise ?? task);
+    } catch (e) {
+      // graceful degradation: canvas still shows, no text layer
+      console.warn('[pdf-reader] text layer:', e.message);
+    }
+
+    rendered.add(n);
+  } catch (e) {
+    console.error('[pdf-reader] render page', n, e);
+    rendering.delete(n);
+    return;
+  }
+
+  rendering.delete(n);
+}
+
+// ── Update toolbar state ───────────────────────────────
+function setCurrentPage(n) {
+  curPage = n;
+  pgCur.value      = n;
+  btnPrev.disabled = n <= 1;
+  btnNext.disabled = n >= numPages;
+  pbar.style.width = (n / numPages * 100) + '%';
+  savePos(curName, n);
+}
+
+// ── Track current page from scroll position ────────────
+let scrollTimer;
+viewer.addEventListener('scroll', () => {
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    // Find which page's centre is closest to viewer centre
+    const vmid = viewer.scrollTop + viewer.clientHeight / 2;
+    for (const pw of viewer.querySelectorAll('.pw')) {
+      const top = pw.offsetTop;
+      const bot = top + pw.offsetHeight;
+      if (top <= vmid && vmid < bot) {
+        const n = +pw.dataset.page;
+        if (n !== curPage) setCurrentPage(n);
+        break;
+      }
+    }
+  }, 80);
+}, { passive: true });
+
+// ── Scroll viewer to a page ────────────────────────────
+function scrollToPage(n, smooth = false) {
+  const pw = viewer.querySelector(`[data-page="${n}"]`);
+  if (!pw) return;
+  viewer.scrollTo({ top: pw.offsetTop - 24, behavior: smooth ? 'smooth' : 'instant' });
+}
+
+// ── Navigate ───────────────────────────────────────────
+function goTo(n) {
+  if (!pdf) return;
+  n = Math.max(1, Math.min(n, numPages));
+  scrollToPage(n, true);
+}
+
+// ── Reset render state + re-attach lazy observer ───────
+function attachLazyObserver() {
+  if (lazyObserver) lazyObserver.disconnect();
+  lazyObserver = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (e.isIntersecting) renderPageEl(e.target);
+    }
+  }, {
+    root: viewer,
+    rootMargin: '500px 0px',  // pre-render pages 500px before they scroll into view
+    threshold: 0,
+  });
+  viewer.querySelectorAll('.pw').forEach(pw => lazyObserver.observe(pw));
+}
+
+// ── Load PDF ───────────────────────────────────────────
+async function loadFile(file) {
+  if (!file || file.type !== 'application/pdf') { showToast('Not a PDF'); return; }
+
+  curName = file.name;
+  fname.textContent = file.name;
+  drop.style.display = 'none';
+  rendered.clear();
+  rendering.clear();
+
+  try {
+    const buf = await file.arrayBuffer();
+    pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    numPages = pdf.numPages;
+    pgTot.textContent = '/ ' + numPages;
+    pgCur.max = numPages;
+
+    // Get page-1 viewport to size all placeholders
+    const firstPage = await pdf.getPage(1);
+    const s  = effectiveScale(firstPage);
+    const vp = firstPage.getViewport({ scale: s });
+    const W  = vp.width + 'px';
+    const H  = vp.height + 'px';
+
+    // Build page slots
+    viewer.innerHTML = '';
+    for (let i = 1; i <= numPages; i++) {
+      const pw = document.createElement('div');
+      pw.className = 'pw';
+      pw.dataset.page = i;
+      pw.style.width  = W;
+      pw.style.height = H;   // placeholder height for correct scroll math
+
+      const canvas = document.createElement('canvas');
+      const tl = document.createElement('div');
+      tl.className = 'tl';
+
+      pw.appendChild(canvas);
+      pw.appendChild(tl);
+      viewer.appendChild(pw);
+    }
+
+    viewer.style.display = 'flex';
+
+    // Restore saved page
+    const saved = Math.min(Math.max(loadPos(curName), 1), numPages);
+    if (saved > 1) showToast(`Resuming from page ${saved}`);
+
+    // Scroll first (so IntersectionObserver fires correctly), then attach observer
+    requestAnimationFrame(() => {
+      scrollToPage(saved, false);
+      setCurrentPage(saved);
+      attachLazyObserver();
+    });
+
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to load PDF');
+    drop.style.display = 'flex';
+    viewer.style.display = 'none';
+  }
+}
+
+// ── Re-render all pages at new scale ──────────────────
+async function rerenderAll() {
+  if (!pdf) return;
+  rendered.clear();
+  rendering.clear();
+
+  // Recompute placeholder size
+  const firstPage = await pdf.getPage(1);
+  const s  = effectiveScale(firstPage);
+  const vp = firstPage.getViewport({ scale: s });
+
+  for (const pw of viewer.querySelectorAll('.pw')) {
+    pw.style.width  = vp.width  + 'px';
+    pw.style.height = vp.height + 'px';
+    const canvas = pw.querySelector('canvas');
+    canvas.width = 0; canvas.height = 0;
+    pw.querySelector('.tl').innerHTML = '';
+  }
+
+  attachLazyObserver();
+}
+
+// ── Zoom ───────────────────────────────────────────────
+zoomSel.addEventListener('change', () => {
+  curScale = zoomSel.value === 'fit' ? 'fit' : parseFloat(zoomSel.value);
+  rerenderAll();
+});
+
+// ── Nav buttons ────────────────────────────────────────
+btnPrev.addEventListener('click', () => goTo(curPage - 1));
+btnNext.addEventListener('click', () => goTo(curPage + 1));
+pgCur.addEventListener('change', () => goTo(parseInt(pgCur.value) || 1));
+pgCur.addEventListener('keydown', e => { if (e.key === 'Enter') goTo(parseInt(pgCur.value) || 1); });
+
+// ── Keyboard ───────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (document.activeElement === pgCur) return;
+  if (['ArrowRight', 'j', 'PageDown'].includes(e.key)) { e.preventDefault(); goTo(curPage + 1); }
+  if (['ArrowLeft',  'k', 'PageUp'  ].includes(e.key)) { e.preventDefault(); goTo(curPage - 1); }
+  if (e.key === 'Home') { e.preventDefault(); goTo(1); }
+  if (e.key === 'End')  { e.preventDefault(); goTo(numPages); }
+});
+
+// ── File input ─────────────────────────────────────────
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); fileInput.value = ''; });
+
+// ── Drag & drop ────────────────────────────────────────
+['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev   => document.addEventListener(ev, () => drop.classList.remove('over')));
+document.addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+document.getElementById('drop-box').addEventListener('click', () => fileInput.click());
+
+// ── Resize ─────────────────────────────────────────────
+window.addEventListener('resize', () => { if (pdf && curScale === 'fit') rerenderAll(); });
+</script>
+</body>
+</html>
