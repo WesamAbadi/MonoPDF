@@ -8,142 +8,166 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:      #141414;
-  --bar:     #0b0b0b;
-  --border:  #252525;
-  --accent:  #f0c040;
-  --fg:      #c8c8c8;
-  --dim:     #484848;
-  --mono:    ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace;
-  --bar-h:   46px;
+  --bg:    #141414;
+  --bar:   #0b0b0b;
+  --bdr:   #252525;
+  --acc:   #f0c040;
+  --fg:    #c8c8c8;
+  --dim:   #484848;
+  --mono:  ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace;
+  --bar-h: 46px;
+  --sb-w:  220px;
 }
 
 html, body { height: 100%; background: var(--bg); color: var(--fg); font-family: var(--mono); overflow: hidden; }
 
-/* ── Toolbar ─────────────────────────────── */
+/* ── Toolbar ─────────────────────────────────────────── */
 #bar {
   position: fixed; inset: 0 0 auto 0; height: var(--bar-h);
-  background: var(--bar); border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 6px; padding: 0 14px;
+  background: var(--bar); border-bottom: 1px solid var(--bdr);
+  display: flex; align-items: center; gap: 4px; padding: 0 10px;
   z-index: 50; user-select: none;
 }
-#open-btn {
+.btn {
   all: unset; cursor: pointer; font: 10px/1 var(--mono);
-  letter-spacing: .12em; text-transform: uppercase;
-  padding: 6px 11px; border: 1px solid var(--border); border-radius: 3px;
+  letter-spacing: .10em; text-transform: uppercase;
+  padding: 5px 9px; border: 1px solid var(--bdr); border-radius: 3px;
   color: var(--fg); transition: border-color .15s, color .15s; white-space: nowrap; flex-shrink: 0;
 }
-#open-btn:hover { border-color: var(--accent); color: var(--accent); }
-#fname { font-size: 10px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 0; }
-.spacer { flex: 1; }
-#nav { display: flex; align-items: center; gap: 4px; }
-#nav button {
-  all: unset; cursor: pointer; width: 30px; height: 30px;
-  display: grid; place-items: center; border-radius: 4px; font-size: 14px;
-  color: var(--fg); transition: background .12s, color .12s;
-}
-#nav button:hover:not(:disabled) { background: #1c1c1c; color: #fff; }
+.btn:hover:not(:disabled) { border-color: var(--acc); color: var(--acc); }
+.btn:disabled { opacity: .25; cursor: default; }
+.btn.active { border-color: var(--acc); color: var(--acc); }
+#btn-close:hover { border-color: #c05050; color: #c05050; }
+#fname { font-size: 10px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1 1 0; padding: 0 4px; }
+.sep { width: 1px; height: 20px; background: var(--bdr); flex-shrink: 0; margin: 0 2px; }
+#nav { display: flex; align-items: center; gap: 2px; }
+#nav button { all: unset; cursor: pointer; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 3px; font-size: 13px; color: var(--fg); transition: background .12s; }
+#nav button:hover:not(:disabled) { background: #1c1c1c; }
 #nav button:disabled { opacity: .25; cursor: default; }
-#pg-cur {
-  all: unset; width: 38px; text-align: center; font: 11px/1 var(--mono);
-  color: var(--accent); border-bottom: 1px solid var(--border); padding: 3px 4px; transition: border-color .15s;
-}
-#pg-cur:focus { outline: none; border-color: var(--accent); }
+#pg-cur { all: unset; width: 34px; text-align: center; font: 11px/1 var(--mono); color: var(--acc); border-bottom: 1px solid var(--bdr); padding: 2px; }
+#pg-cur:focus { outline: none; border-color: var(--acc); }
 #pg-tot { font-size: 11px; color: var(--dim); white-space: nowrap; }
-#zoom {
-  all: unset; font: 10px/1 var(--mono); color: var(--dim); cursor: pointer;
-  padding: 5px 8px; border: 1px solid transparent; border-radius: 3px;
-  transition: border-color .15s; margin-left: 8px; flex-shrink: 0;
-}
-#zoom:hover { border-color: var(--border); }
+#zoom { all: unset; font: 10px/1 var(--mono); color: var(--dim); cursor: pointer; padding: 5px 7px; border: 1px solid transparent; border-radius: 3px; flex-shrink: 0; }
+#zoom:hover { border-color: var(--bdr); }
 #zoom option { background: #1a1a1a; }
 
-/* ── Progress ───────────────────────────── */
-#pbar { position: fixed; top: var(--bar-h); left: 0; height: 2px; width: 0%; background: var(--accent); z-index: 49; transition: width .25s; }
+/* ── Search bar ──────────────────────────────────────── */
+#sbar {
+  position: fixed; top: var(--bar-h); right: 0;
+  display: none; align-items: center; gap: 5px;
+  background: var(--bar); border-left: 1px solid var(--bdr); border-bottom: 1px solid var(--bdr);
+  padding: 5px 9px; z-index: 49;
+}
+#sbar.open { display: flex; }
+#s-input {
+  all: unset; font: 11px/1 var(--mono); color: var(--fg);
+  background: #1a1a1a; border: 1px solid var(--bdr); border-radius: 3px;
+  padding: 4px 8px; width: 170px;
+}
+#s-input:focus { border-color: var(--acc); outline: none; }
+#s-count { font-size: 10px; color: var(--dim); white-space: nowrap; min-width: 54px; text-align: right; }
+.sbtn { all: unset; cursor: pointer; padding: 3px 6px; border-radius: 3px; font-size: 12px; color: var(--fg); transition: background .1s; }
+.sbtn:hover { background: #252525; }
 
-/* ── Viewer (continuous scroll) ──────────── */
+/* ── Progress bar ────────────────────────────────────── */
+#pbar { position: fixed; top: var(--bar-h); left: 0; height: 2px; width: 0%; background: var(--acc); z-index: 48; transition: width .25s; }
+
+/* ── Shell ───────────────────────────────────────────── */
+#shell { position: fixed; inset: var(--bar-h) 0 0 0; display: none; flex-direction: row; }
+
+/* ── Sidebar ─────────────────────────────────────────── */
+#sidebar {
+  width: 0; flex-shrink: 0; overflow: hidden;
+  background: #0d0d0d; border-right: 1px solid var(--bdr);
+  transition: width .2s ease; display: flex; flex-direction: column;
+}
+#sidebar.open { width: var(--sb-w); }
+#sb-head { padding: 9px 12px 8px; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); border-bottom: 1px solid var(--bdr); flex-shrink: 0; }
+#sb-tree { flex: 1; overflow-y: auto; padding: 5px 0; }
+#sb-tree::-webkit-scrollbar { width: 3px; }
+#sb-tree::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 2px; }
+.oi {
+  display: flex; align-items: baseline; gap: 3px;
+  padding: 4px 10px 4px 12px; font-size: 10px; color: #999;
+  cursor: pointer; overflow: hidden; transition: color .1s;
+  line-height: 1.4; white-space: nowrap;
+}
+.oi:hover { color: var(--acc); background: #151515; }
+.oi.active { color: var(--acc); }
+.oi-tog { all: unset; font-size: 8px; color: var(--dim); cursor: pointer; flex-shrink: 0; width: 10px; transition: transform .15s; }
+.oi-tog.open { transform: rotate(90deg); }
+.oi-lbl { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.oi-kids { display: none; }
+.oi-kids.open { display: block; }
+
+/* ── Viewer ──────────────────────────────────────────── */
 #viewer {
-  position: fixed; inset: var(--bar-h) 0 0 0;
+  flex: 1; min-width: 0;
   overflow-y: auto; overflow-x: auto;
-  display: none; flex-direction: column; align-items: center;
-  padding: 24px 20px 80px; gap: 16px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 20px 80px; gap: 14px;
 }
-
-/* ── Page wrap: canvas + text layer ─────── */
-.pw {
-  position: relative;
-  line-height: 0;
-  box-shadow: 0 4px 24px rgba(0,0,0,.55);
-  flex-shrink: 0;
-  background: #fff; /* placeholder bg before canvas renders */
-}
+.spread { display: flex; flex-direction: row; gap: 4px; align-items: flex-start; flex-shrink: 0; }
+.pw { position: relative; line-height: 0; box-shadow: 0 4px 24px rgba(0,0,0,.55); flex-shrink: 0; background: #fff; }
 .pw canvas { display: block; }
 
-/* ── Text layer ─────────────────────────── */
+/* ── Text layer ──────────────────────────────────────── */
 .tl {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  opacity: 1;
-  line-height: 1;
-  text-size-adjust: none;
-  forced-color-adjust: none;
-  transform-origin: 0 0;
+  position: absolute; inset: 0; overflow: hidden;
+  line-height: 1; text-size-adjust: none; forced-color-adjust: none;
+  transform-origin: 0 0; pointer-events: none;
 }
-.tl span, .tl br {
-  color: transparent;
-  position: absolute;
-  white-space: pre;
-  cursor: text;
-  transform-origin: 0% 0%;
-}
+.tl span, .tl br { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; pointer-events: auto; }
 .tl span { transform: scaleX(var(--scale-x, 1)); }
 .tl span::selection { background: rgba(240,192,64,.38); }
-.tl span::-moz-selection { background: rgba(240,192,64,.38); }
 .tl .endOfContent { display: block; position: absolute; inset: 100% 0 0; min-height: 100%; cursor: default; z-index: -1; }
+.tl span.hi  { background: rgba(255,200,50,.32); }
+.tl span.cur { background: rgba(255,160,20,.65); }
 
-/* ── Annotation layer (Links/QR Codes) ──── */
-.al {
-  position: absolute;
-  inset: 0;
-  pointer-events: none; /* Let normal clicks pass to the text layer */
-}
-.al section {
-  position: absolute;
-  pointer-events: auto; /* Only capture clicks specifically on annotations */
-  transform-origin: 0 0;
-}
-.al a {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+/* ── Annotation layer ────────────────────────────────── */
+.al { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 3; }
+.al a { display: block; pointer-events: all; }
+.al a:hover { background: rgba(255,220,0,.15); outline: 1px solid rgba(255,200,0,.4); }
 
-/* ── Drop zone ───────────────────────────── */
-#drop { position: fixed; inset: var(--bar-h) 0 0 0; display: flex; align-items: center; justify-content: center; }
+/* ── Drop zone / home ────────────────────────────────── */
+#drop { position: fixed; inset: var(--bar-h) 0 0 0; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 40px 20px 60px; }
+#drop-center { display: flex; flex-direction: column; align-items: center; gap: 28px; width: 100%; max-width: 680px; }
 #drop-box {
-  border: 1px dashed var(--border); border-radius: 6px;
-  padding: 52px 72px; text-align: center; cursor: pointer;
-  transition: border-color .2s, background .2s;
+  border: 1px dashed var(--bdr); border-radius: 6px;
+  padding: 44px 60px; text-align: center; cursor: pointer;
+  transition: border-color .2s, background .2s; width: 100%;
 }
-#drop-box:hover, #drop.over #drop-box { border-color: var(--accent); background: rgba(240,192,64,.035); }
-#drop-icon { font-size: 28px; margin-bottom: 14px; opacity: .35; }
-#drop-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
+#drop-box:hover, #drop.over #drop-box { border-color: var(--acc); background: rgba(240,192,64,.03); }
+#drop-icon { font-size: 26px; margin-bottom: 12px; opacity: .3; }
+#drop-label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 5px; }
 #drop-sub { font-size: 10px; color: var(--dim); line-height: 1.7; }
-
-/* ── Toast ───────────────────────────────── */
-#toast {
-  position: fixed; bottom: 24px; left: 50%;
-  transform: translateX(-50%) translateY(6px);
-  background: #1e1e1e; border: 1px solid var(--border); border-radius: 4px;
-  padding: 7px 14px; font-size: 10px; letter-spacing: .1em; color: var(--accent);
-  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap;
+#recent-sec { width: 100%; display: none; }
+#recent-head { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
+#recent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px,1fr)); gap: 8px; }
+.rc {
+  border: 1px solid var(--bdr); border-radius: 4px;
+  padding: 11px 10px 10px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+  display: flex; flex-direction: column; gap: 5px;
 }
+.rc:hover { border-color: var(--acc); background: rgba(240,192,64,.02); }
+.rc-name { font-size: 10px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-prog { font-size: 9px; color: var(--dim); }
+.rc-bar { height: 2px; background: var(--bdr); border-radius: 1px; margin-top: 1px; }
+.rc-fill { height: 100%; background: var(--acc); border-radius: 1px; }
+.rc-date { font-size: 9px; color: #2e2e2e; margin-top: 1px; }
+
+/* ── Confirmation modal ──────────────────────────────── */
+#overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: none; align-items: center; justify-content: center; z-index: 100; }
+#overlay.open { display: flex; }
+#modal { background: #111; border: 1px solid var(--bdr); border-radius: 5px; padding: 22px 26px; max-width: 320px; width: 90%; }
+#modal p { font-size: 11px; color: var(--fg); line-height: 1.75; margin-bottom: 16px; }
+#modal-btns { display: flex; gap: 7px; justify-content: flex-end; }
+
+/* ── Toast / hint ────────────────────────────────────── */
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(6px); background: #1e1e1e; border: 1px solid var(--bdr); border-radius: 4px; padding: 7px 14px; font-size: 10px; letter-spacing: .1em; color: var(--acc); opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ── Hint ────────────────────────────────── */
-#hint { position: fixed; bottom: 10px; right: 14px; font-size: 9px; letter-spacing: .08em; color: #2e2e2e; pointer-events: none; }
-
+#hint { position: fixed; bottom: 8px; right: 12px; font-size: 9px; letter-spacing: .07em; color: #282828; pointer-events: none; }
 #file-input { display: none; }
 </style>
 </head>
@@ -151,130 +175,187 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); font-family:
 
 <input type="file" id="file-input" accept=".pdf">
 
+<!-- Toolbar -->
 <div id="bar">
-  <button id="open-btn" onclick="fileInput.click()">Open PDF</button>
+  <button class="btn" id="btn-sb"  title="Toggle outline (o)">☰</button>
+  <button class="btn" id="btn-open" onclick="fileInput.click()">Open</button>
+  <button class="btn" id="btn-close" style="display:none">✕ Close</button>
   <span id="fname"></span>
-  <div class="spacer"></div>
+  <div class="sep"></div>
+  <button class="btn" id="btn-search" title="Search (Ctrl+F)">⌕</button>
   <div id="nav">
-    <button id="btn-prev" disabled title="Prev page (↑ / k)">&#8592;</button>
+    <button id="btn-prev" disabled title="Prev (←/k)">&#8592;</button>
     <input id="pg-cur" type="number" min="1" value="1">
     <span id="pg-tot">/ —</span>
-    <button id="btn-next" disabled title="Next page (↓ / j)">&#8594;</button>
+    <button id="btn-next" disabled title="Next (→/j)">&#8594;</button>
   </div>
+  <div class="sep"></div>
   <select id="zoom">
     <option value="0.75">75%</option>
     <option value="1.0">100%</option>
     <option value="1.25">125%</option>
     <option value="1.5" selected>150%</option>
     <option value="2.0">200%</option>
-    <option value="fit">Fit width</option>
+    <option value="fit">Fit</option>
   </select>
+  <button class="btn" id="btn-spread" title="Two-page spread">⊞</button>
+  <button class="btn" id="btn-rotate" title="Rotate 90°">↻</button>
 </div>
+
+<!-- Search bar -->
+<div id="sbar">
+  <input id="s-input" type="text" placeholder="Search…" autocomplete="off" spellcheck="false">
+  <span id="s-count">—</span>
+  <button class="sbtn" id="s-prev" title="Prev (Shift+Enter)">↑</button>
+  <button class="sbtn" id="s-next" title="Next (Enter)">↓</button>
+  <button class="sbtn" id="s-close" title="Close (Esc)">✕</button>
+</div>
+
 <div id="pbar"></div>
 
+<!-- Shell: sidebar + viewer -->
+<div id="shell">
+  <div id="sidebar">
+    <div id="sb-head">Outline</div>
+    <div id="sb-tree"></div>
+  </div>
+  <div id="viewer"></div>
+</div>
+
+<!-- Home / drop zone -->
 <div id="drop">
-  <div id="drop-box">
-    <div id="drop-icon">⬡</div>
-    <div id="drop-label">Drop a PDF here</div>
-    <div id="drop-sub">or click <strong style="color:var(--fg)">Open PDF</strong> above<br>file saves automatically in browser storage</div>
+  <div id="drop-center">
+    <div id="drop-box">
+      <div id="drop-icon">⬡</div>
+      <div id="drop-label">Drop a PDF here</div>
+      <div id="drop-sub">or click <strong style="color:var(--fg)">Open</strong> above<br>files save automatically in browser storage</div>
+    </div>
+    <div id="recent-sec">
+      <div id="recent-head">Recent</div>
+      <div id="recent-grid"></div>
+    </div>
   </div>
 </div>
 
-<div id="viewer"></div>
+<!-- Confirmation modal -->
+<div id="overlay">
+  <div id="modal">
+    <p>Close this file and return to the home screen?<br><span style="color:var(--dim);font-size:10px">Your reading position and zoom are saved.</span></p>
+    <div id="modal-btns">
+      <button class="btn" id="m-cancel">Cancel</button>
+      <button class="btn" id="m-confirm" style="border-color:#803030;color:#c06060">Close File</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
-<div id="hint">scroll · j k navigate · ← → page</div>
+<div id="hint">scroll · j/k navigate · ctrl+f search · o outline</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 'use strict';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-const STORE_KEY  = 'pdfr:v2:positions';
-const WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+// ─────────────────────────────────────────────────────
+// IndexedDB helpers
+// ─────────────────────────────────────────────────────
+const DB_NAME = 'pdfr_db', DB_VER = 2, STORE = 'files', MAX_RECENT = 6;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL;
-
-// ── IndexedDB Configuration ────────────────────────────
-const DB_NAME = 'pdfr_db';
-const DB_VERSION = 1;
-const STORE_NAME = 'files';
-const ACTIVE_KEY = 'active_pdf';
-
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = e => {
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, DB_VER);
+    r.onupgradeneeded = e => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
     };
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function dbSet(k, v) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put(v, k);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  });
+}
+async function dbGet(k) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const r = db.transaction(STORE,'readonly').objectStore(STORE).get(k);
+    r.onsuccess = e => res(e.target.result ?? null);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function dbDel(k) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(STORE,'readwrite');
+    tx.objectStore(STORE).delete(k);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
   });
 }
 
-async function saveFileToDB(file) {
+// ─────────────────────────────────────────────────────
+// Recent files
+// ─────────────────────────────────────────────────────
+async function getRecent() {
+  try { return (await dbGet('recent_list')) || []; } catch { return []; }
+}
+async function saveRecent(file, page, totalPages, zoom) {
   try {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const record = { blob: file, name: file.name, type: file.type, ts: Date.now() };
-      const req = store.put(record, ACTIVE_KEY);
-      req.onsuccess = () => resolve();
-      req.onerror = e => reject(e.target.error);
-    });
-  } catch (err) {
-    console.error('[pdf-reader] Failed to save PDF to IndexedDB:', err);
-  }
+    let list = await getRecent();
+    const ei = list.findIndex(r => r.name === file.name);
+    let slot;
+    if (ei >= 0) {
+      slot = list[ei].slot; list.splice(ei, 1);
+    } else {
+      const used = new Set(list.map(r => r.slot));
+      slot = 0; while (used.has(slot) && slot < MAX_RECENT) slot++;
+      if (slot >= MAX_RECENT) {
+        list.sort((a,b) => a.ts - b.ts);
+        const ev = list.shift(); await dbDel('recent:'+ev.slot); slot = ev.slot;
+      }
+      await dbSet('recent:'+slot, { blob: file, name: file.name, type: file.type });
+    }
+    list.unshift({ slot, name: file.name, ts: Date.now(), page, totalPages, zoom });
+    await dbSet('recent_list', list.slice(0, MAX_RECENT));
+  } catch(e) { console.error('[pdf] saveRecent:', e); }
+}
+async function patchRecent(name, page, totalPages, zoom) {
+  try {
+    const list = await getRecent();
+    const i = list.findIndex(r => r.name === name);
+    if (i >= 0) { Object.assign(list[i], { page, totalPages, zoom, ts: Date.now() }); await dbSet('recent_list', list); }
+  } catch {}
 }
 
-async function loadFileFromDB() {
-  try {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(ACTIVE_KEY);
-      req.onsuccess = e => {
-        const res = e.target.result;
-        if (res && res.blob) {
-          resolve(new File([res.blob], res.name, { type: res.type }));
-        } else {
-          resolve(null);
-        }
-      };
-      req.onerror = e => reject(e.target.error);
-    });
-  } catch (err) {
-    console.error('[pdf-reader] Failed to load PDF from IndexedDB:', err);
-    return null;
-  }
-}
+// ─────────────────────────────────────────────────────
+// localStorage prefs
+// ─────────────────────────────────────────────────────
+const PREF_KEY = 'pdfr:v3:prefs';
+const getPrefs = () => { try { return JSON.parse(localStorage.getItem(PREF_KEY))||{}; } catch { return {}; } };
+const setPrefs = d  => { try { localStorage.setItem(PREF_KEY, JSON.stringify(d)); } catch {} };
+const getFilePref = n => getPrefs()[n] || {};
+const setFilePref = (n, patch) => { const d=getPrefs(); d[n]={...d[n],...patch}; setPrefs(d); };
 
-async function clearFileFromDB() {
-  try {
-    const db = await initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.delete(ACTIVE_KEY);
-      req.onsuccess = () => resolve();
-      req.onerror = e => reject(e.target.error);
-    });
-  } catch (err) {
-    console.error('[pdf-reader] Failed to clear PDF:', err);
-  }
-}
+// ─────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────
+let pdf=null, curPage=1, numPages=0, curName='';
+let curScale=1.5, userRot=0, spreadMode=false;
+const rendered=new Set(), rendering=new Set();
+let lazyObs=null;
 
-// ── State ──────────────────────────────────────────────
-let pdf = null, curPage = 1, numPages = 0, curName = '';
-let curScale = 1.5;
-const rendered  = new Set();  // page numbers fully rendered
-const rendering = new Set();  // page numbers currently rendering
-let lazyObserver = null;
+// Search
+let sQuery='', sMatches=[], sCur=-1, sIndexVer=0;
+const sIdx={};   // pageNum -> lowercased text
 
-// ── Elements ───────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+// Element refs
+// ─────────────────────────────────────────────────────
 const fileInput = document.getElementById('file-input');
 const fname     = document.getElementById('fname');
 const btnPrev   = document.getElementById('btn-prev');
@@ -285,294 +366,525 @@ const zoomSel   = document.getElementById('zoom');
 const viewer    = document.getElementById('viewer');
 const drop      = document.getElementById('drop');
 const pbar      = document.getElementById('pbar');
+const shell     = document.getElementById('shell');
+const sidebar   = document.getElementById('sidebar');
+const sbTree    = document.getElementById('sb-tree');
+const sbar      = document.getElementById('sbar');
+const sInput    = document.getElementById('s-input');
+const sCount    = document.getElementById('s-count');
+const overlay   = document.getElementById('overlay');
 const toast     = document.getElementById('toast');
+const btnClose  = document.getElementById('btn-close');
 
-// ── Storage ────────────────────────────────────────────
-const getPos = ()        => { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; } };
-const savePos = (n, p)   => { try { const d = getPos(); d[n] = p; localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch {} };
-const loadPos = n        => getPos()[n] || 1;
-
-// ── Toast ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+// Toast
+// ─────────────────────────────────────────────────────
 let toastT;
-function showToast(msg) {
-  clearTimeout(toastT);
-  toast.textContent = msg;
-  toast.classList.add('show');
-  toastT = setTimeout(() => toast.classList.remove('show'), 2500);
+function showToast(m) {
+  clearTimeout(toastT); toast.textContent=m; toast.classList.add('show');
+  toastT=setTimeout(()=>toast.classList.remove('show'),2500);
 }
 
-// ── Effective scale ────────────────────────────────────
-function effectiveScale(page) {
-  if (curScale === 'fit') {
-    const raw = page.getViewport({ scale: 1 });
-    return Math.max(0.2, (viewer.clientWidth - 48) / raw.width);
-  }
-  return curScale;
+// ─────────────────────────────────────────────────────
+// Scale helpers
+// ─────────────────────────────────────────────────────
+function effectiveScale(rawVp) {
+  if (curScale !== 'fit') return curScale;
+  const avail = Math.max(viewer.clientWidth - 48, 200);
+  return Math.max(0.2, spreadMode ? (avail - 4) / (rawVp.width * 2) : avail / rawVp.width);
 }
 
-// ── Render one page element ────────────────────────────
+async function getVp(pageNum) {
+  const page = await pdf.getPage(pageNum);
+  const raw  = page.getViewport({ scale: 1 });
+  const s    = effectiveScale(raw);
+  return page.getViewport({ scale: s, rotation: (page.rotate + userRot) % 360 });
+}
+
+// ─────────────────────────────────────────────────────
+// Build page wrapper
+// ─────────────────────────────────────────────────────
+function makePW(n) {
+  const pw = document.createElement('div'); pw.className='pw'; pw.dataset.page=n;
+  const canvas=document.createElement('canvas');
+  const tl=document.createElement('div'); tl.className='tl';
+  const al=document.createElement('div'); al.className='al';
+  pw.appendChild(canvas); pw.appendChild(tl); pw.appendChild(al);
+  return pw;
+}
+
+// ─────────────────────────────────────────────────────
+// Render a single page
+// ─────────────────────────────────────────────────────
 async function renderPageEl(pw) {
   const n = +pw.dataset.page;
   if (rendered.has(n) || rendering.has(n)) return;
   rendering.add(n);
-
   try {
     const page = await pdf.getPage(n);
-    const s    = effectiveScale(page);
-    const vp   = page.getViewport({ scale: s });
+    const raw  = page.getViewport({ scale: 1 });
+    const s    = effectiveScale(raw);
+    const vp   = page.getViewport({ scale: s, rotation: (page.rotate + userRot) % 360 });
 
     const canvas = pw.querySelector('canvas');
     const tl     = pw.querySelector('.tl');
     const al     = pw.querySelector('.al');
 
-    // Size canvas
-    canvas.width  = vp.width;
-    canvas.height = vp.height;
-
-    // Size wrappers
-    pw.style.width  = vp.width  + 'px';
-    pw.style.height = vp.height + 'px';
-
+    canvas.width=vp.width; canvas.height=vp.height;
+    pw.style.width=vp.width+'px'; pw.style.height=vp.height+'px';
+    tl.style.width=vp.width+'px'; tl.style.height=vp.height+'px';
     tl.style.setProperty('--scale-factor', s);
-    tl.style.width  = vp.width  + 'px';
-    tl.style.height = vp.height + 'px';
 
-    al.style.width  = vp.width  + 'px';
-    al.style.height = vp.height + 'px';
-
-    // 1. Render canvas
+    // Canvas
     await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
 
-    // 2. Render text layer
+    // Text layer + index
     tl.innerHTML = '';
     const tc = await page.getTextContent();
+    sIdx[n] = tc.items.map(i=>i.str).join(' ').toLowerCase();
+
     try {
       const task = pdfjsLib.renderTextLayer({ textContentSource: tc, container: tl, viewport: vp, textDivs: [] });
       await (task?.promise ?? task);
-    } catch (e) {
-      console.warn('[pdf-reader] text layer:', e.message);
-    }
+    } catch(e) { console.warn('[pdf] text layer:', e.message); }
 
-    // 3. Render annotation layer (for Links / QR Code URLs)
+    // Apply search highlights if active
+    if (sQuery) applyHL(pw, n);
+
+    // Annotation layer (clickable links)
     al.innerHTML = '';
+    al.style.width=vp.width+'px'; al.style.height=vp.height+'px';
     try {
-      const annotations = await page.getAnnotations();
-      if (annotations.length > 0) {
-        pdfjsLib.AnnotationLayer.render({
-          viewport: vp.clone({ dontFlip: true }),
-          div: al,
-          annotations: annotations,
-          page: page,
-          // A minimal mock linkService to enable external URLs to process naturally via <a> tags
-          linkService: {
-            getAnchorUrl: url => url || '',
-            getDestinationHash: () => '',
-            setHash: () => {},
-            executeNamedAction: () => {},
-            cachePageRef: () => {},
-            isPageVisible: () => true
-          }
+      const anns = await page.getAnnotations({ intent: 'display' });
+      for (const ann of anns) {
+        if (ann.subtype !== 'Link') continue;
+        const url = ann.url || ann.unsafeUrl || ann.action?.url || ann.action?.URI;
+        if (!url) continue;
+        const [rx1,ry1,rx2,ry2] = vp.convertToViewportRectangle(ann.rect);
+        const a = document.createElement('a');
+        a.href=url; a.target='_blank'; a.rel='noopener noreferrer nofollow'; a.title=url;
+        Object.assign(a.style, {
+          position:'absolute', cursor:'pointer', pointerEvents:'all',
+          left:  Math.min(rx1,rx2)+'px', top:   Math.min(ry1,ry2)+'px',
+          width: Math.abs(rx2-rx1)+'px', height:Math.abs(ry2-ry1)+'px',
         });
+        al.appendChild(a);
       }
-    } catch (e) {
-      console.warn('[pdf-reader] annotation layer:', e.message);
-    }
+    } catch(e) { console.warn('[pdf] ann layer:', e.message); }
 
     rendered.add(n);
-  } catch (e) {
-    console.error('[pdf-reader] render page', n, e);
-    rendering.delete(n);
-    return;
+  } catch(e) {
+    console.error('[pdf] render page', n, e);
+    rendering.delete(n); return;
   }
-
   rendering.delete(n);
 }
 
-// ── Update toolbar state ───────────────────────────────
-function setCurrentPage(n) {
-  curPage = n;
-  pgCur.value      = n;
-  btnPrev.disabled = n <= 1;
-  btnNext.disabled = n >= numPages;
-  pbar.style.width = (n / numPages * 100) + '%';
-  savePos(curName, n);
+// ─────────────────────────────────────────────────────
+// Background text indexer
+// ─────────────────────────────────────────────────────
+async function buildIndex() {
+  if (!pdf) return;
+  const ver = ++sIndexVer;
+  for (let n=1; n<=numPages; n++) {
+    if (ver !== sIndexVer || sIdx[n]) { await new Promise(r=>setTimeout(r,0)); continue; }
+    try {
+      const page = await pdf.getPage(n);
+      const tc   = await page.getTextContent();
+      sIdx[n] = tc.items.map(i=>i.str).join(' ').toLowerCase();
+    } catch {}
+    await new Promise(r=>setTimeout(r,0));
+  }
+  // Re-run search if active
+  if (sQuery) doSearch(sQuery, false);
 }
 
-// ── Track current page from scroll position ────────────
-let scrollTimer;
+// ─────────────────────────────────────────────────────
+// Search
+// ─────────────────────────────────────────────────────
+function clearHL() {
+  viewer.querySelectorAll('.tl span.hi,.tl span.cur').forEach(s=>s.classList.remove('hi','cur'));
+}
+
+function applyHL(pw, n) {
+  if (!sQuery) return;
+  const tl = pw.querySelector('.tl'); if (!tl) return;
+  tl.querySelectorAll('span.hi,span.cur').forEach(s=>s.classList.remove('hi','cur'));
+  const isCur = sMatches[sCur] === n;
+  let firstDone = false;
+  tl.querySelectorAll('span').forEach(span => {
+    if (span.textContent.toLowerCase().includes(sQuery)) {
+      if (isCur && !firstDone) { span.classList.add('cur'); firstDone=true; }
+      else span.classList.add('hi');
+    }
+  });
+}
+
+function doSearch(q, jumpToFirst=true) {
+  sQuery = q.toLowerCase().trim();
+  clearHL();
+  sMatches=[]; sCur=-1;
+  if (!sQuery) { sCount.textContent='—'; return; }
+  for (let n=1; n<=numPages; n++) {
+    if (sIdx[n] && sIdx[n].includes(sQuery)) sMatches.push(n);
+  }
+  const total = sMatches.length;
+  if (!total) { sCount.textContent='No results'; return; }
+  if (jumpToFirst) { sCur=0; jumpMatch(sMatches[0]); }
+  else { updateSCount(); }
+}
+
+function updateSCount() {
+  if (!sMatches.length) return;
+  sCount.textContent = `${sCur+1} / ${sMatches.length}`;
+}
+
+function jumpMatch(n) {
+  scrollToPage(n, true);
+  if (rendered.has(n)) {
+    const pw = viewer.querySelector(`[data-page="${n}"]`);
+    if (pw) applyHL(pw, n);
+  }
+  updateSCount();
+}
+
+function sNav(dir) {
+  if (!sMatches.length) return;
+  sCur = (sCur + dir + sMatches.length) % sMatches.length;
+  // Clear old current highlight
+  viewer.querySelectorAll('.tl span.cur').forEach(s=>{ s.classList.remove('cur'); s.classList.add('hi'); });
+  jumpMatch(sMatches[sCur]);
+}
+
+function openSearch() {
+  sbar.classList.add('open'); sInput.focus(); sInput.select();
+}
+function closeSearch() {
+  sbar.classList.remove('open');
+  sQuery=''; sMatches=[]; sCur=-1;
+  sInput.value=''; sCount.textContent='—';
+  clearHL();
+}
+
+// ─────────────────────────────────────────────────────
+// Sidebar / outline
+// ─────────────────────────────────────────────────────
+async function loadOutline() {
+  sbTree.innerHTML = '';
+  try {
+    const ol = await pdf.getOutline();
+    if (!ol || !ol.length) {
+      sbTree.innerHTML='<div style="padding:10px 12px;font-size:10px;color:var(--dim)">No outline</div>';
+      return;
+    }
+    renderOutlineNodes(ol, sbTree, 0);
+  } catch { sbTree.innerHTML='<div style="padding:10px 12px;font-size:10px;color:var(--dim)">—</div>'; }
+}
+
+function renderOutlineNodes(items, container, depth) {
+  for (const item of items) {
+    const row = document.createElement('div'); row.className='oi';
+    row.style.paddingLeft = (12 + depth*13)+'px';
+
+    const hasKids = item.items && item.items.length;
+    if (hasKids) {
+      const tog = document.createElement('span'); tog.className='oi-tog'; tog.textContent='▶';
+      const lbl = document.createElement('span'); lbl.className='oi-lbl'; lbl.textContent=item.title||'…';
+      const kids = document.createElement('div'); kids.className='oi-kids';
+      tog.onclick = e => { e.stopPropagation(); tog.classList.toggle('open'); kids.classList.toggle('open'); };
+      row.appendChild(tog); row.appendChild(lbl);
+      renderOutlineNodes(item.items, kids, depth+1);
+      container.appendChild(row); container.appendChild(kids);
+    } else {
+      const lbl = document.createElement('span'); lbl.className='oi-lbl'; lbl.textContent=item.title||'…';
+      row.appendChild(lbl);
+      container.appendChild(row);
+    }
+
+    row.addEventListener('click', async () => {
+      if (!item.dest && !item.url) return;
+      if (item.url) { window.open(item.url,'_blank'); return; }
+      try {
+        let dest = item.dest;
+        if (typeof dest === 'string') dest = await pdf.getDestination(dest);
+        if (!dest) return;
+        const idx = await pdf.getPageIndex(dest[0]);
+        goTo(idx+1);
+      } catch {}
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Layout builder
+// ─────────────────────────────────────────────────────
+function buildLayout(W, H) {
+  viewer.innerHTML = '';
+  if (!spreadMode) {
+    for (let i=1; i<=numPages; i++) {
+      const pw=makePW(i); pw.style.width=W; pw.style.height=H;
+      viewer.appendChild(pw);
+    }
+  } else {
+    // Page 1: solo cover
+    const c=document.createElement('div'); c.className='spread';
+    const p1=makePW(1); p1.style.width=W; p1.style.height=H; c.appendChild(p1);
+    viewer.appendChild(c);
+    for (let i=2; i<=numPages; i+=2) {
+      const sp=document.createElement('div'); sp.className='spread';
+      const pa=makePW(i); pa.style.width=W; pa.style.height=H; sp.appendChild(pa);
+      if (i+1<=numPages) { const pb=makePW(i+1); pb.style.width=W; pb.style.height=H; sp.appendChild(pb); }
+      viewer.appendChild(sp);
+    }
+  }
+}
+
+function attachLazy() {
+  if (lazyObs) lazyObs.disconnect();
+  lazyObs = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) renderPageEl(e.target);
+  }, { root: viewer, rootMargin: '600px 0px', threshold: 0 });
+  viewer.querySelectorAll('.pw').forEach(pw => lazyObs.observe(pw));
+}
+
+// ─────────────────────────────────────────────────────
+// Navigation
+// ─────────────────────────────────────────────────────
+let patchT;
+function setCurrentPage(n) {
+  curPage=n; pgCur.value=n;
+  btnPrev.disabled=n<=1; btnNext.disabled=n>=numPages;
+  pbar.style.width = (n/numPages*100)+'%';
+  setFilePref(curName, { page:n, zoom:zoomSel.value });
+  clearTimeout(patchT);
+  patchT = setTimeout(() => patchRecent(curName, n, numPages, zoomSel.value), 1500);
+}
+
+let scrollT;
 viewer.addEventListener('scroll', () => {
-  clearTimeout(scrollTimer);
-  scrollTimer = setTimeout(() => {
-    const vmid = viewer.scrollTop + viewer.clientHeight / 2;
+  clearTimeout(scrollT);
+  scrollT = setTimeout(() => {
+    const vr = viewer.getBoundingClientRect();
+    const mid = vr.top + viewer.clientHeight/2;
     for (const pw of viewer.querySelectorAll('.pw')) {
-      const top = pw.offsetTop;
-      const bot = top + pw.offsetHeight;
-      if (top <= vmid && vmid < bot) {
-        const n = +pw.dataset.page;
-        if (n !== curPage) setCurrentPage(n);
-        break;
+      const r = pw.getBoundingClientRect();
+      if (r.top <= mid && mid < r.bottom) {
+        const n = +pw.dataset.page; if (n!==curPage) setCurrentPage(n); break;
       }
     }
   }, 80);
 }, { passive: true });
 
-// ── Scroll viewer to a page ────────────────────────────
-function scrollToPage(n, smooth = false) {
-  const pw = viewer.querySelector(`[data-page="${n}"]`);
-  if (!pw) return;
-  viewer.scrollTo({ top: pw.offsetTop - 24, behavior: smooth ? 'smooth' : 'instant' });
+function scrollToPage(n, smooth=false) {
+  const pw = viewer.querySelector(`[data-page="${n}"]`); if (!pw) return;
+  const vr = viewer.getBoundingClientRect();
+  const pr = pw.getBoundingClientRect();
+  viewer.scrollBy({ top: pr.top - vr.top - 20, behavior: smooth ? 'smooth' : 'instant' });
 }
 
-// ── Navigate ───────────────────────────────────────────
 function goTo(n) {
   if (!pdf) return;
   n = Math.max(1, Math.min(n, numPages));
   scrollToPage(n, true);
 }
 
-// ── Reset render state + re-attach lazy observer ───────
-function attachLazyObserver() {
-  if (lazyObserver) lazyObserver.disconnect();
-  lazyObserver = new IntersectionObserver(entries => {
-    for (const e of entries) {
-      if (e.isIntersecting) renderPageEl(e.target);
-    }
-  }, {
-    root: viewer,
-    rootMargin: '500px 0px',
-    threshold: 0,
-  });
-  viewer.querySelectorAll('.pw').forEach(pw => lazyObserver.observe(pw));
+// ─────────────────────────────────────────────────────
+// Re-render (zoom / spread / rotate)
+// ─────────────────────────────────────────────────────
+async function rerenderAll() {
+  if (!pdf) return;
+  rendered.clear(); rendering.clear();
+  const vp = await getVp(1);
+  const W=vp.width+'px', H=vp.height+'px';
+  buildLayout(W, H);
+  attachLazy();
+  scrollToPage(curPage, false);
 }
 
-// ── Load PDF ───────────────────────────────────────────
-async function loadFile(file, saveToDb = true) {
+// ─────────────────────────────────────────────────────
+// Load file
+// ─────────────────────────────────────────────────────
+async function loadFile(file, saveToDb=true) {
   if (!file || file.type !== 'application/pdf') { showToast('Not a PDF'); return; }
+  curName = file.name; fname.textContent = file.name;
+  drop.style.display='none'; shell.style.display='flex'; btnClose.style.display='';
+  rendered.clear(); rendering.clear();
+  Object.keys(sIdx).forEach(k=>delete sIdx[k]);
+  closeSearch();
 
-  curName = file.name;
-  fname.textContent = file.name;
-  drop.style.display = 'none';
-  rendered.clear();
-  rendering.clear();
+  // Restore prefs
+  const prefs = getFilePref(file.name);
+  if (prefs.zoom) {
+    curScale = prefs.zoom==='fit' ? 'fit' : parseFloat(prefs.zoom);
+    const opt = zoomSel.querySelector(`option[value="${prefs.zoom}"]`);
+    if (opt) zoomSel.value=prefs.zoom;
+  }
 
   try {
-    if (saveToDb) {
-      await saveFileToDB(file);
-    }
     const buf = await file.arrayBuffer();
     pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     numPages = pdf.numPages;
-    pgTot.textContent = '/ ' + numPages;
-    pgCur.max = numPages;
+    pgTot.textContent = '/ '+numPages; pgCur.max=numPages;
 
-    const firstPage = await pdf.getPage(1);
-    const s  = effectiveScale(firstPage);
-    const vp = firstPage.getViewport({ scale: s });
-    const W  = vp.width + 'px';
-    const H  = vp.height + 'px';
+    const vp = await getVp(1);
+    const W=vp.width+'px', H=vp.height+'px';
+    buildLayout(W, H);
 
-    viewer.innerHTML = '';
-    for (let i = 1; i <= numPages; i++) {
-      const pw = document.createElement('div');
-      pw.className = 'pw';
-      pw.dataset.page = i;
-      pw.style.width  = W;
-      pw.style.height = H;
-
-      const canvas = document.createElement('canvas');
-      const tl = document.createElement('div');
-      tl.className = 'tl';
-      const al = document.createElement('div');
-      al.className = 'al';
-
-      pw.appendChild(canvas);
-      pw.appendChild(tl);
-      pw.appendChild(al);
-      viewer.appendChild(pw);
-    }
-
-    viewer.style.display = 'flex';
-
-    const saved = Math.min(Math.max(loadPos(curName), 1), numPages);
-    if (saved > 1) showToast(`Resuming from page ${saved}`);
+    const saved = Math.min(Math.max(prefs.page||1, 1), numPages);
+    if (saved>1) showToast(`Resuming p.${saved}`);
 
     requestAnimationFrame(() => {
-      scrollToPage(saved, false);
-      setCurrentPage(saved);
-      attachLazyObserver();
+      scrollToPage(saved, false); setCurrentPage(saved); attachLazy();
     });
 
-  } catch (err) {
-    console.error(err);
-    showToast('Failed to load PDF');
-    drop.style.display = 'flex';
-    viewer.style.display = 'none';
-    await clearFileFromDB();
+    loadOutline();
+    setTimeout(buildIndex, 400);
+    if (saveToDb) saveRecent(file, saved, numPages, zoomSel.value);
+
+  } catch(err) {
+    console.error(err); showToast('Failed to load PDF');
+    drop.style.display='flex'; shell.style.display='none'; btnClose.style.display='none';
   }
 }
 
-// ── Re-render all pages at new scale ──────────────────
-async function rerenderAll() {
-  if (!pdf) return;
-  rendered.clear();
-  rendering.clear();
-
-  const firstPage = await pdf.getPage(1);
-  const s  = effectiveScale(firstPage);
-  const vp = firstPage.getViewport({ scale: s });
-
-  for (const pw of viewer.querySelectorAll('.pw')) {
-    pw.style.width  = vp.width  + 'px';
-    pw.style.height = vp.height + 'px';
-    
-    const canvas = pw.querySelector('canvas');
-    canvas.width = 0; canvas.height = 0;
-    
-    pw.querySelector('.tl').innerHTML = '';
-    pw.querySelector('.al').innerHTML = '';
-  }
-
-  attachLazyObserver();
+// ─────────────────────────────────────────────────────
+// Close file
+// ─────────────────────────────────────────────────────
+function doClose() {
+  overlay.classList.remove('open');
+  pdf=null; curPage=1; numPages=0; curName='';
+  shell.style.display='none'; viewer.innerHTML='';
+  drop.style.display='flex'; btnClose.style.display='none';
+  fname.textContent=''; pgTot.textContent='/ —'; pgCur.value=1;
+  btnPrev.disabled=btnNext.disabled=true; pbar.style.width='0%';
+  sbTree.innerHTML=''; sidebar.classList.remove('open');
+  closeSearch(); Object.keys(sIdx).forEach(k=>delete sIdx[k]);
+  loadRecentGrid();
 }
 
-// ── Zoom ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
+// Recent grid
+// ─────────────────────────────────────────────────────
+function relDate(ts) {
+  const d=Math.floor((Date.now()-ts)/86400000);
+  if (d<1) return 'today';
+  if (d===1) return 'yesterday';
+  return d+'d ago';
+}
+
+async function loadRecentGrid() {
+  const list = await getRecent();
+  const sec  = document.getElementById('recent-sec');
+  const grid = document.getElementById('recent-grid');
+  if (!list.length) { sec.style.display='none'; return; }
+  sec.style.display=''; grid.innerHTML='';
+  for (const item of list) {
+    const pct = item.totalPages ? Math.round((item.page/item.totalPages)*100) : 0;
+    const card = document.createElement('div'); card.className='rc';
+    card.innerHTML = `
+      <div class="rc-name" title="${item.name}">${item.name.replace(/\.pdf$/i,'')}</div>
+      <div class="rc-prog">${item.totalPages ? `p.${item.page} / ${item.totalPages}` : '—'}</div>
+      <div class="rc-bar"><div class="rc-fill" style="width:${pct}%"></div></div>
+      <div class="rc-date">${relDate(item.ts)}</div>`;
+    card.onclick = async () => {
+      try {
+        const rec = await dbGet('recent:'+item.slot);
+        if (!rec?.blob) { showToast('File not found'); return; }
+        loadFile(new File([rec.blob], rec.name, { type: rec.type }), false);
+      } catch { showToast('Could not load'); }
+    };
+    grid.appendChild(card);
+  }
+}
+
+// ─────────────────────────────────────────────────────
+// Event wiring
+// ─────────────────────────────────────────────────────
+
+// Zoom
 zoomSel.addEventListener('change', () => {
-  curScale = zoomSel.value === 'fit' ? 'fit' : parseFloat(zoomSel.value);
+  curScale = zoomSel.value==='fit' ? 'fit' : parseFloat(zoomSel.value);
+  setFilePref(curName, { zoom: zoomSel.value });
   rerenderAll();
 });
 
-// ── Nav buttons ────────────────────────────────────────
-btnPrev.addEventListener('click', () => goTo(curPage - 1));
-btnNext.addEventListener('click', () => goTo(curPage + 1));
-pgCur.addEventListener('change', () => goTo(parseInt(pgCur.value) || 1));
-pgCur.addEventListener('keydown', e => { if (e.key === 'Enter') goTo(parseInt(pgCur.value) || 1); });
-
-// ── Keyboard ───────────────────────────────────────────
-document.addEventListener('keydown', e => {
-  if (document.activeElement === pgCur) return;
-  if (['ArrowRight', 'j', 'PageDown'].includes(e.key)) { e.preventDefault(); goTo(curPage + 1); }
-  if (['ArrowLeft',  'k', 'PageUp'  ].includes(e.key)) { e.preventDefault(); goTo(curPage - 1); }
-  if (e.key === 'Home') { e.preventDefault(); goTo(1); }
-  if (e.key === 'End')  { e.preventDefault(); goTo(numPages); }
+// Spread
+document.getElementById('btn-spread').addEventListener('click', () => {
+  spreadMode=!spreadMode;
+  document.getElementById('btn-spread').classList.toggle('active', spreadMode);
+  rerenderAll();
 });
 
-// ── File input ─────────────────────────────────────────
-fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); fileInput.value = ''; });
+// Rotate
+document.getElementById('btn-rotate').addEventListener('click', () => {
+  userRot=(userRot+90)%360; rerenderAll();
+});
 
-// ── Drag & drop ────────────────────────────────────────
-['dragenter', 'dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
-['dragleave', 'drop'].forEach(ev   => document.addEventListener(ev, () => drop.classList.remove('over')));
-document.addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
-document.getElementById('drop-box').addEventListener('click', () => fileInput.click());
+// Nav
+btnPrev.addEventListener('click', ()=>goTo(curPage-1));
+btnNext.addEventListener('click', ()=>goTo(curPage+1));
+pgCur.addEventListener('change', ()=>goTo(parseInt(pgCur.value)||1));
+pgCur.addEventListener('keydown', e=>{ if(e.key==='Enter') goTo(parseInt(pgCur.value)||1); });
 
-// ── Resize ─────────────────────────────────────────────
-window.addEventListener('resize', () => { if (pdf && curScale === 'fit') rerenderAll(); });
+// Sidebar
+document.getElementById('btn-sb').addEventListener('click', ()=>sidebar.classList.toggle('open'));
 
-// ── Auto-restore on startup ────────────────────────────
+// Close file
+btnClose.addEventListener('click', ()=>overlay.classList.add('open'));
+document.getElementById('m-cancel').addEventListener('click', ()=>overlay.classList.remove('open'));
+document.getElementById('m-confirm').addEventListener('click', doClose);
+overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.classList.remove('open'); });
+
+// Search bar events
+document.getElementById('btn-search').addEventListener('click', openSearch);
+document.getElementById('s-close').addEventListener('click', closeSearch);
+document.getElementById('s-prev').addEventListener('click', ()=>sNav(-1));
+document.getElementById('s-next').addEventListener('click', ()=>sNav(1));
+let sDebT;
+sInput.addEventListener('input', ()=>{ clearTimeout(sDebT); sDebT=setTimeout(()=>doSearch(sInput.value),280); });
+sInput.addEventListener('keydown', e=>{
+  if (e.key==='Enter') { e.shiftKey ? sNav(-1) : sNav(1); }
+  if (e.key==='Escape') closeSearch();
+});
+
+// Keyboard
+document.addEventListener('keydown', e=>{
+  if ((e.ctrlKey||e.metaKey) && e.key==='f') { e.preventDefault(); openSearch(); return; }
+  if (e.target===pgCur || e.target===sInput) return;
+  if (e.key==='o') { sidebar.classList.toggle('open'); return; }
+  if (['ArrowRight','j','PageDown'].includes(e.key)) { e.preventDefault(); goTo(curPage+1); }
+  if (['ArrowLeft', 'k','PageUp'  ].includes(e.key)) { e.preventDefault(); goTo(curPage-1); }
+  if (e.key==='Home') { e.preventDefault(); goTo(1); }
+  if (e.key==='End')  { e.preventDefault(); goTo(numPages); }
+  if (e.key==='Escape') closeSearch();
+});
+
+// File I/O
+fileInput.addEventListener('change', e=>{ if(e.target.files[0]) loadFile(e.target.files[0]); fileInput.value=''; });
+['dragenter','dragover'].forEach(ev=>document.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'    ].forEach(ev=>document.addEventListener(ev, ()=>drop.classList.remove('over')));
+document.addEventListener('drop', e=>{ e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+document.getElementById('drop-box').addEventListener('click', ()=>fileInput.click());
+window.addEventListener('resize', ()=>{ if(pdf && curScale==='fit') rerenderAll(); });
+
+// ─────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────
 (async () => {
-  const savedFile = await loadFileFromDB();
-  if (savedFile) {
-    loadFile(savedFile, false);
+  loadRecentGrid();
+  // Auto-restore most recent file
+  const list = await getRecent();
+  if (list.length) {
+    try {
+      const rec = await dbGet('recent:'+list[0].slot);
+      if (rec?.blob) loadFile(new File([rec.blob], rec.name, { type: rec.type }), false);
+    } catch {}
+  } else {
+    // Migrate from old v1 single-file storage
+    try {
+      const old = await dbGet('active_pdf');
+      if (old?.blob) loadFile(new File([old.blob], old.name, { type: old.type }), true);
+    } catch {}
   }
 })();
 </script>
