@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MonoPDF</title>
+<title>PDF Reader</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -80,19 +80,12 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); font-family:
 .pw canvas { display: block; }
 
 /* ── Text layer — the critical part ─────── */
-/*
-  pdf.js 3.x text layer requirements:
-  1. position: absolute; inset: 0
-  2. --scale-factor set via JS to viewport.scale BEFORE renderTextLayer()
-  3. spans use position:absolute with transform for precise placement
-*/
 .tl {
   position: absolute;
   inset: 0;
   overflow: hidden;
   opacity: 1;
   line-height: 1;
-  /* required by pdf.js 3.x for text coordinate system */
   text-size-adjust: none;
   forced-color-adjust: none;
   transform-origin: 0 0;
@@ -104,11 +97,9 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); font-family:
   cursor: text;
   transform-origin: 0% 0%;
 }
-/* pdf.js 3.x uses --scale-x per span for horizontal scaling */
 .tl span { transform: scaleX(var(--scale-x, 1)); }
 .tl span::selection { background: rgba(240,192,64,.38); }
 .tl span::-moz-selection { background: rgba(240,192,64,.38); }
-/* end-of-content sentinel */
 .tl .endOfContent { display: block; position: absolute; inset: 100% 0 0; min-height: 100%; cursor: default; z-index: -1; }
 
 /* ── Drop zone ───────────────────────────── */
@@ -168,7 +159,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); font-family:
   <div id="drop-box">
     <div id="drop-icon">⬡</div>
     <div id="drop-label">Drop a PDF here</div>
-    <div id="drop-sub">or click <strong style="color:var(--fg)">Open PDF</strong> above<br>position saves automatically per file</div>
+    <div id="drop-sub">or click <strong style="color:var(--fg)">Open PDF</strong> above<br>file saves automatically in browser storage</div>
   </div>
 </div>
 
@@ -184,6 +175,86 @@ const STORE_KEY  = 'pdfr:v2:positions';
 const WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL;
+
+// ── IndexedDB Configuration ────────────────────────────
+const DB_NAME = 'pdfr_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'files';
+const ACTIVE_KEY = 'active_pdf';
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function saveFileToDB(file) {
+  try {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const record = {
+        blob: file,
+        name: file.name,
+        type: file.type,
+        ts: Date.now()
+      };
+      const req = store.put(record, ACTIVE_KEY);
+      req.onsuccess = () => resolve();
+      req.onerror = e => reject(e.target.error);
+    });
+  } catch (err) {
+    console.error('[pdf-reader] Failed to save PDF to IndexedDB:', err);
+  }
+}
+
+async function loadFileFromDB() {
+  try {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(ACTIVE_KEY);
+      req.onsuccess = e => {
+        const res = e.target.result;
+        if (res && res.blob) {
+          const file = new File([res.blob], res.name, { type: res.type });
+          resolve(file);
+        } else {
+          resolve(null);
+        }
+      };
+      req.onerror = e => reject(e.target.error);
+    });
+  } catch (err) {
+    console.error('[pdf-reader] Failed to load PDF from IndexedDB:', err);
+    return null;
+  }
+}
+
+async function clearFileFromDB() {
+  try {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.delete(ACTIVE_KEY);
+      req.onsuccess = () => resolve();
+      req.onerror = e => reject(e.target.error);
+    });
+  } catch (err) {
+    console.error('[pdf-reader] Failed to clear PDF from IndexedDB:', err);
+  }
+}
 
 // ── State ──────────────────────────────────────────────
 let pdf = null, curPage = 1, numPages = 0, curName = '';
@@ -250,9 +321,6 @@ async function renderPageEl(pw) {
     pw.style.width  = vp.width  + 'px';
     pw.style.height = vp.height + 'px';
 
-    // ── KEY FIX: set --scale-factor BEFORE renderTextLayer ──
-    // pdf.js 3.x reads this variable during text layer rendering.
-    // Without it, text spans are placed at wrong coordinates.
     tl.style.setProperty('--scale-factor', s);
     tl.style.width  = vp.width  + 'px';
     tl.style.height = vp.height + 'px';
@@ -260,22 +328,19 @@ async function renderPageEl(pw) {
     // Render canvas
     await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
 
-    // Render text layer — DOM-based (not canvas), so extensions
-    // injecting on text selection work exactly like a native PDF viewer
+    // Render text layer
     tl.innerHTML = '';
     const tc = await page.getTextContent();
 
     try {
       const task = pdfjsLib.renderTextLayer({
-        textContentSource: tc,  // pdf.js 3.x API
+        textContentSource: tc,
         container: tl,
         viewport: vp,
         textDivs: [],
       });
-      // handle both promise-returning and direct-promise APIs
       await (task?.promise ?? task);
     } catch (e) {
-      // graceful degradation: canvas still shows, no text layer
       console.warn('[pdf-reader] text layer:', e.message);
     }
 
@@ -304,7 +369,6 @@ let scrollTimer;
 viewer.addEventListener('scroll', () => {
   clearTimeout(scrollTimer);
   scrollTimer = setTimeout(() => {
-    // Find which page's centre is closest to viewer centre
     const vmid = viewer.scrollTop + viewer.clientHeight / 2;
     for (const pw of viewer.querySelectorAll('.pw')) {
       const top = pw.offsetTop;
@@ -341,14 +405,14 @@ function attachLazyObserver() {
     }
   }, {
     root: viewer,
-    rootMargin: '500px 0px',  // pre-render pages 500px before they scroll into view
+    rootMargin: '500px 0px',
     threshold: 0,
   });
   viewer.querySelectorAll('.pw').forEach(pw => lazyObserver.observe(pw));
 }
 
 // ── Load PDF ───────────────────────────────────────────
-async function loadFile(file) {
+async function loadFile(file, saveToDb = true) {
   if (!file || file.type !== 'application/pdf') { showToast('Not a PDF'); return; }
 
   curName = file.name;
@@ -358,27 +422,28 @@ async function loadFile(file) {
   rendering.clear();
 
   try {
+    if (saveToDb) {
+      await saveFileToDB(file);
+    }
     const buf = await file.arrayBuffer();
     pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     numPages = pdf.numPages;
     pgTot.textContent = '/ ' + numPages;
     pgCur.max = numPages;
 
-    // Get page-1 viewport to size all placeholders
     const firstPage = await pdf.getPage(1);
     const s  = effectiveScale(firstPage);
     const vp = firstPage.getViewport({ scale: s });
     const W  = vp.width + 'px';
     const H  = vp.height + 'px';
 
-    // Build page slots
     viewer.innerHTML = '';
     for (let i = 1; i <= numPages; i++) {
       const pw = document.createElement('div');
       pw.className = 'pw';
       pw.dataset.page = i;
       pw.style.width  = W;
-      pw.style.height = H;   // placeholder height for correct scroll math
+      pw.style.height = H;
 
       const canvas = document.createElement('canvas');
       const tl = document.createElement('div');
@@ -391,11 +456,9 @@ async function loadFile(file) {
 
     viewer.style.display = 'flex';
 
-    // Restore saved page
     const saved = Math.min(Math.max(loadPos(curName), 1), numPages);
     if (saved > 1) showToast(`Resuming from page ${saved}`);
 
-    // Scroll first (so IntersectionObserver fires correctly), then attach observer
     requestAnimationFrame(() => {
       scrollToPage(saved, false);
       setCurrentPage(saved);
@@ -407,6 +470,7 @@ async function loadFile(file) {
     showToast('Failed to load PDF');
     drop.style.display = 'flex';
     viewer.style.display = 'none';
+    await clearFileFromDB();
   }
 }
 
@@ -416,7 +480,6 @@ async function rerenderAll() {
   rendered.clear();
   rendering.clear();
 
-  // Recompute placeholder size
   const firstPage = await pdf.getPage(1);
   const s  = effectiveScale(firstPage);
   const vp = firstPage.getViewport({ scale: s });
@@ -464,6 +527,14 @@ document.getElementById('drop-box').addEventListener('click', () => fileInput.cl
 
 // ── Resize ─────────────────────────────────────────────
 window.addEventListener('resize', () => { if (pdf && curScale === 'fit') rerenderAll(); });
+
+// ── Auto-restore on startup ────────────────────────────
+(async () => {
+  const savedFile = await loadFileFromDB();
+  if (savedFile) {
+    loadFile(savedFile, false);
+  }
+})();
 </script>
 </body>
 </html>
