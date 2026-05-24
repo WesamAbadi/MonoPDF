@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Reader</title>
+<title>MonoPDF</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -79,7 +79,7 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); font-family:
 }
 .pw canvas { display: block; }
 
-/* ── Text layer — the critical part ─────── */
+/* ── Text layer ─────────────────────────── */
 .tl {
   position: absolute;
   inset: 0;
@@ -101,6 +101,23 @@ html, body { height: 100%; background: var(--bg); color: var(--fg); font-family:
 .tl span::selection { background: rgba(240,192,64,.38); }
 .tl span::-moz-selection { background: rgba(240,192,64,.38); }
 .tl .endOfContent { display: block; position: absolute; inset: 100% 0 0; min-height: 100%; cursor: default; z-index: -1; }
+
+/* ── Annotation layer (Links/QR Codes) ──── */
+.al {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* Let normal clicks pass to the text layer */
+}
+.al section {
+  position: absolute;
+  pointer-events: auto; /* Only capture clicks specifically on annotations */
+  transform-origin: 0 0;
+}
+.al a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 
 /* ── Drop zone ───────────────────────────── */
 #drop { position: fixed; inset: var(--bar-h) 0 0 0; display: flex; align-items: center; justify-content: center; }
@@ -202,12 +219,7 @@ async function saveFileToDB(file) {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const record = {
-        blob: file,
-        name: file.name,
-        type: file.type,
-        ts: Date.now()
-      };
+      const record = { blob: file, name: file.name, type: file.type, ts: Date.now() };
       const req = store.put(record, ACTIVE_KEY);
       req.onsuccess = () => resolve();
       req.onerror = e => reject(e.target.error);
@@ -227,8 +239,7 @@ async function loadFileFromDB() {
       req.onsuccess = e => {
         const res = e.target.result;
         if (res && res.blob) {
-          const file = new File([res.blob], res.name, { type: res.type });
-          resolve(file);
+          resolve(new File([res.blob], res.name, { type: res.type }));
         } else {
           resolve(null);
         }
@@ -252,7 +263,7 @@ async function clearFileFromDB() {
       req.onerror = e => reject(e.target.error);
     });
   } catch (err) {
-    console.error('[pdf-reader] Failed to clear PDF from IndexedDB:', err);
+    console.error('[pdf-reader] Failed to clear PDF:', err);
   }
 }
 
@@ -312,12 +323,13 @@ async function renderPageEl(pw) {
 
     const canvas = pw.querySelector('canvas');
     const tl     = pw.querySelector('.tl');
+    const al     = pw.querySelector('.al');
 
     // Size canvas
     canvas.width  = vp.width;
     canvas.height = vp.height;
 
-    // Size wrapper
+    // Size wrappers
     pw.style.width  = vp.width  + 'px';
     pw.style.height = vp.height + 'px';
 
@@ -325,23 +337,45 @@ async function renderPageEl(pw) {
     tl.style.width  = vp.width  + 'px';
     tl.style.height = vp.height + 'px';
 
-    // Render canvas
+    al.style.width  = vp.width  + 'px';
+    al.style.height = vp.height + 'px';
+
+    // 1. Render canvas
     await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
 
-    // Render text layer
+    // 2. Render text layer
     tl.innerHTML = '';
     const tc = await page.getTextContent();
-
     try {
-      const task = pdfjsLib.renderTextLayer({
-        textContentSource: tc,
-        container: tl,
-        viewport: vp,
-        textDivs: [],
-      });
+      const task = pdfjsLib.renderTextLayer({ textContentSource: tc, container: tl, viewport: vp, textDivs: [] });
       await (task?.promise ?? task);
     } catch (e) {
       console.warn('[pdf-reader] text layer:', e.message);
+    }
+
+    // 3. Render annotation layer (for Links / QR Code URLs)
+    al.innerHTML = '';
+    try {
+      const annotations = await page.getAnnotations();
+      if (annotations.length > 0) {
+        pdfjsLib.AnnotationLayer.render({
+          viewport: vp.clone({ dontFlip: true }),
+          div: al,
+          annotations: annotations,
+          page: page,
+          // A minimal mock linkService to enable external URLs to process naturally via <a> tags
+          linkService: {
+            getAnchorUrl: url => url || '',
+            getDestinationHash: () => '',
+            setHash: () => {},
+            executeNamedAction: () => {},
+            cachePageRef: () => {},
+            isPageVisible: () => true
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('[pdf-reader] annotation layer:', e.message);
     }
 
     rendered.add(n);
@@ -448,9 +482,12 @@ async function loadFile(file, saveToDb = true) {
       const canvas = document.createElement('canvas');
       const tl = document.createElement('div');
       tl.className = 'tl';
+      const al = document.createElement('div');
+      al.className = 'al';
 
       pw.appendChild(canvas);
       pw.appendChild(tl);
+      pw.appendChild(al);
       viewer.appendChild(pw);
     }
 
@@ -487,9 +524,12 @@ async function rerenderAll() {
   for (const pw of viewer.querySelectorAll('.pw')) {
     pw.style.width  = vp.width  + 'px';
     pw.style.height = vp.height + 'px';
+    
     const canvas = pw.querySelector('canvas');
     canvas.width = 0; canvas.height = 0;
+    
     pw.querySelector('.tl').innerHTML = '';
+    pw.querySelector('.al').innerHTML = '';
   }
 
   attachLazyObserver();
